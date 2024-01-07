@@ -9,5 +9,5 @@ At that point I had two choices to change the C:\Program Files\MongoDB\Server\7.
 
 1. 0.0.0.0 which makes it accessible by all interfaces (insecure)
 2. run ipconfig.exe
-   a. get the IPv4 Address from the Ethernet adapter vEtherner(WSL)
-   b. replce the blindip with it
+- get the IPv4 Address from the Ethernet adapter vEtherner(WSL)
+- replce the blindip with it
