@@ -37,7 +37,14 @@ app.get("/books", (req, res) => {
 });
 
 app.get("/books/:id", (req, res) => {
-  console.log(req.params.id)
+  let id = req.params.id
+  console.log(id)
+
+  if(!ObjectId.isValid(id)){
+    res
+    .status(400)
+    .json({error: "Id provided was not found"})
+  }
   db.collection("books")
     .findOne({ _id: new ObjectId(req.params.id) })
     .then((doc) => {
