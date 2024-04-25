@@ -16,12 +16,14 @@ func main(){
 }
 
 type Animal struct{
+	Id int
 	Type string
 	Name string
 }
 
 func getHome(w http.ResponseWriter, r *http.Request){
 var tmplFile = "templates/layout.html"
+var rowFile = "templates/row.html"
 items:= []Animal{
 	{Type: "Dog", Name: "Rob"},
 	{Type: "Cat", Name: "Mandy"},
@@ -31,7 +33,7 @@ items:= []Animal{
  }{
 	 Items: items}
 
-tmpl, err:= template.ParseFiles(tmplFile)
+tmpl, err:= template.ParseFiles(tmplFile, rowFile)
 
 if err!=nil{
 	panic(err)

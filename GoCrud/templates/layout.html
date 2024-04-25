@@ -23,15 +23,11 @@
 			</tr>
 		</thead>
 		{{range .Items}}
-		<tr>
-			<td>{{.Id}}</td>
-			<td>{{.Type}}</td>
-			<td>{{.Name}}</td>
-		</tr>
+			{{template "row.html" .}}
 		{{end}}
 	</table>
 	<div class="d-flex flex-row">
-		<button>Add</button>
+		<button class="w-100">Add</button>
 	</div>
 </body>
 
