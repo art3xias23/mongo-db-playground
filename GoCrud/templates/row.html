@@ -2,6 +2,6 @@
 	<td><input name="id" value={{.Id}}></input></td>
 	<td><input name="type" value={{.Type}}></input></td>
 	<td><input name="name" value={{.Name}}></input></td>
-	<td><button hx->Update</button></td>
+	<td><button hx-post="/update" hx-inclde="closest tr">Update</button></td>
 	<td><button>Delete</button></td>
 </tr>
