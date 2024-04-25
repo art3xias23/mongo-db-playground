@@ -8,7 +8,21 @@
 </head>
 
 <body>
-	<div>Hello</div>
+	<table border="1">
+		<thead>
+			<tr>
+				<th>Type</th>
+				<th>Name</th>
+
+			</tr>
+		</thead>
+		{{range .Items}}
+		<tr>
+			<td>{{.Type}}</td>
+			<td>{{.Name}}</td>
+		</tr>
+		{{end}}
+	</table>
 </body>
 
 </html>
