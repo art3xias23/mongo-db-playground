@@ -23,6 +23,7 @@ type Animal struct{
 }
 
 func getUpdate(w http.ResponseWriter, r *http.Request){
+	fmt.Println("Got update")
   if err := r.ParseForm(); err != nil {
         fmt.Fprintf(w, "ParseForm() err: %v", err)
         return
@@ -31,7 +32,7 @@ func getUpdate(w http.ResponseWriter, r *http.Request){
     // Print out all the form fields and their values.
     for key, values := range r.Form {
         // `values` is a slice of strings (because form fields can have multiple values)
-        fmt.Printf("%s: %s\n", key, values)
+        fmt.Printf("%s: %s\n", key, values[0])
     }
 }
 
