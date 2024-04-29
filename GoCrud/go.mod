@@ -2,7 +2,10 @@ module github.com/art3xias23/mongo-db-playground/tree/main/GoCrud
 
 go 1.22.2
 
-require go.mongodb.org/mongo-driver v1.15.0
+require (
+	go.mongodb.org/mongo-driver v1.15.0
+	golang.org/x/tools v0.6.0
+)
 
 require (
 	github.com/golang/snappy v0.0.1 // indirect

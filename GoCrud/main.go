@@ -102,7 +102,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 	case "PUT":
 		response, err = updateRecord(collection, ctx, data)
 	case "GET":
-		response, err = getRecord(collection, ctx, data)
+		response, err = getRecords(collection, ctx)
 	case "DELETE":
 		response, err = deleteRecord(collection, ctx, data)
 	}

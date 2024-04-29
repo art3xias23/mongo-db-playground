@@ -1,14 +1,16 @@
 package main
 
 import (
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"golang.org/x/tools/go/analysis/passes/ifaceassert"
 )
-func updateRecord(collection *mongo.Collection, ctx context.Context, map[string]interface{})(map[string]interface{}, error){
-	filter:= bson.M("Id": data["Id"])
+func updateRecord(collection *mongo.Collection, ctx context.Context, data map[string]interface{})(map[string]interface{}, error){
+	filter:= bson.M{"Id": data["Id"]}
 	fields:= bson.M{"$set": data}
 
-	_, err:= collection.UpdateOne(ctx context.Context, filter interface{}, update interface{}, opts ...*options.UpdateOptions)
+	_, err:= collection.UpdateOne(ctx , filter,  fields)
 
 	if err!= nil{
 		return nil, err
