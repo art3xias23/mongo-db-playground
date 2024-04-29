@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -20,8 +21,8 @@ const (
 func main() {
 	fmt.Println("hello")
 
+	http.HandleFunc("/endpoint", requestHandler)
 	http.HandleFunc("/", getHome)
-	http.HandleFunc("/update", getUpdate)
 
 	http.ListenAndServe(":3000", nil)
 }
@@ -72,6 +73,8 @@ func getHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func requestHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Entered request handler")
+
 	w.Header().Set("Content-Type", "application/json")
 
 	response := map[string]interface{}{}
@@ -85,25 +88,48 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err.Error())
 	}
 
+	fmt.Print("connection established")
+
+	
+
 	collection := client.Database(dbName).Collection("animals")
 
 	data := map[string]interface{}{}
 
 	err = json.NewDecoder(r.Body).Decode(&data)
 
+	fmt.Println("&data: ", data)
+	bd, err:= io.ReadAll(r.Body)
+
+	defer r.Body.Close()
+
 	if err != nil {
-		fmt.Println("Error in getting animal collection")
+		fmt.Println("Error in reading body")
+		fmt.Println(err.Error())
+	}
+	bodyString:= string(bd)
+
+	fmt.Println("body string: ", bodyString)
+
+	fmt.Println(r.Body)
+
+	if err != nil {
+		fmt.Println("Error in decoding body")
 		fmt.Println(err.Error())
 	}
 
 	switch r.Method {
 	case "POST":
+		fmt.Println("POST")
 		response, err = createRecord(collection, ctx, data)
 	case "PUT":
+		fmt.Println("PUT")
 		response, err = updateRecord(collection, ctx, data)
 	case "GET":
+		fmt.Println("GET")
 		response, err = getRecords(collection, ctx)
 	case "DELETE":
+		fmt.Println("DELETE")
 		response, err = deleteRecord(collection, ctx, data)
 	}
 
