@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io"
 	"net/http"
+	"strconv"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -88,40 +89,66 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err.Error())
 	}
 
-	fmt.Print("connection established")
+	fmt.Println("connection established")
 
 	
 
 	collection := client.Database(dbName).Collection("animals")
+	filter := bson.M{}
+
+	cursor, err:= collection.Find(ctx, filter)
+	if err != nil {
+		fmt.Print("\nCould not get cursor: ", err)
+		return
+	}
+
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx){
+		var animal Animal
+
+		if err:= cursor.Decode(&animal); err!=nil {
+			fmt.Print("\nCould not decode animal: ", err)
+			return
+		}
+		 fmt.Printf("Animal: %+v\n", animal)
+	}
 
 	data := map[string]interface{}{}
 
-	err = json.NewDecoder(r.Body).Decode(&data)
-
-	fmt.Println("&data: ", data)
-	bd, err:= io.ReadAll(r.Body)
-
-	defer r.Body.Close()
-
+	err = r.ParseForm()
 	if err != nil {
-		fmt.Println("Error in reading body")
-		fmt.Println(err.Error())
+		http.Error(w, "Error parsing form", http.StatusBadRequest)
+		return
 	}
-	bodyString:= string(bd)
 
-	fmt.Println("body string: ", bodyString)
+	id := r.FormValue("Id")
+	tpe := r.FormValue("Type")
+	name := r.FormValue("Name")
 
-	fmt.Println(r.Body)
 
+	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		fmt.Println("Error in decoding body")
-		fmt.Println(err.Error())
+		fmt.Println("Could not convert id to int: ", id)
+		return
+	}
+
+	animal:= Animal{
+		Id: idInt,
+		Type: tpe,
+		Name:name,
+	}
+
+	bsonData, err:= bson.Marshal(animal)
+	if err != nil {
+		fmt.Println("Could not marshal animal: ", id)
+		return
 	}
 
 	switch r.Method {
 	case "POST":
 		fmt.Println("POST")
-		response, err = createRecord(collection, ctx, data)
+		response, err = createRecord(collection, ctx, bsonData)
 	case "PUT":
 		fmt.Println("PUT")
 		response, err = updateRecord(collection, ctx, data)
