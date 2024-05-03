@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
 	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -22,10 +22,30 @@ const (
 func main() {
 	fmt.Println("hello")
 
+	configContent, err := os.ReadFile("dbinfo.yaml")
+
+	if err != nil {
+		fmt.Println("Could not read dbinfo.yaml")
+	}
+
+	err = yaml.Unmarshal(configContent, &config)
+	if err != nil {
+		fmt.Println("Could not unmarshal dbinfo.yaml", err)
+	}
+
+	fmt.Printf("password %s, username %s", config.DbPass, config.DbUser)
+
 	http.HandleFunc("/endpoint", requestHandler)
 	http.HandleFunc("/", getHome)
 
 	http.ListenAndServe(":3000", nil)
+}
+
+var config DbConfig
+
+type DbConfig struct {
+	DbPass string `yaml:"dbPass"`
+	DbUser string `yaml:"dbUser"`
 }
 
 type Animal struct {
@@ -53,6 +73,7 @@ func getHome(w http.ResponseWriter, r *http.Request) {
 		{Type: "Dog", Name: "Rob"},
 		{Type: "Cat", Name: "Mandy"},
 	}
+
 	data := struct {
 		Items []Animal
 	}{
@@ -76,25 +97,16 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
+	ctx:=context.Background()
 	response := map[string]interface{}{}
 
-	ctx := context.Background()
-
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://"+dbUser+":"+dbPass+"@172.28.224.1:27017/gocrud?authSource=gocrud"))
-
-	if err != nil {
-		fmt.Println("Error in mongodb client")
-		fmt.Println(err.Error())
-	}
-
-	fmt.Println("connection established")
-
-	
-
-	collection := client.Database(dbName).Collection("animals")
 	filter := bson.M{}
-
-	cursor, err:= collection.Find(ctx, filter)
+	client, err := GetMongoDbClient(config.DbPass, config.DbUser, ctx)
+	if err != nil {
+		fmt.Print("\nCould not get mongo db client: ", err)
+		return
+	}
+	cursor, err := client.collection.Find(ctx, filter)
 	if err != nil {
 		fmt.Print("\nCould not get cursor: ", err)
 		return
@@ -102,14 +114,14 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer cursor.Close(ctx)
 
-	for cursor.Next(ctx){
+	for cursor.Next(ctx) {
 		var animal Animal
 
-		if err:= cursor.Decode(&animal); err!=nil {
+		if err := cursor.Decode(&animal); err != nil {
 			fmt.Print("\nCould not decode animal: ", err)
 			return
 		}
-		 fmt.Printf("Animal: %+v\n", animal)
+		fmt.Printf("Animal: %+v\n", animal)
 	}
 
 	data := map[string]interface{}{}
@@ -124,20 +136,19 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 	tpe := r.FormValue("Type")
 	name := r.FormValue("Name")
 
-
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
 		fmt.Println("Could not convert id to int: ", id)
 		return
 	}
 
-	animal:= Animal{
-		Id: idInt,
+	animal := Animal{
+		Id:   idInt,
 		Type: tpe,
-		Name:name,
+		Name: name,
 	}
 
-	bsonData, err:= bson.Marshal(animal)
+	bsonData, err := bson.Marshal(animal)
 	if err != nil {
 		fmt.Println("Could not marshal animal: ", id)
 		return
@@ -146,30 +157,29 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
 		fmt.Println("POST")
-		response, err = createRecord(collection, ctx, bsonData)
+		response, err = createRecord(client.collection, ctx, bsonData)
 	case "PUT":
 		fmt.Println("PUT")
-		response, err = updateRecord(collection, ctx, data)
+		response, err = updateRecord(client.collection, ctx, data)
 	case "GET":
 		fmt.Println("GET")
-		response, err = getRecords(collection, ctx)
+		response, err = getRecords(client.collection, ctx)
 	case "DELETE":
 		fmt.Println("DELETE")
-		response, err = deleteRecord(collection, ctx, data)
+		response, err = deleteRecord(client.collection, ctx, data)
 	}
 
+	if err != nil {
 
-	   if err != nil { 
+		fmt.Println("Error in obtaining response")
+		response = map[string]interface{}{"error": err.Error()}
+	}
 
-		fmt.Println("Error in obtaining response") 
-         response = map[string]interface{}{"error": err.Error(),}  
-     }
-
-	enc:= json.NewEncoder(w)
+	enc := json.NewEncoder(w)
 
 	enc.SetIndent("", "  ")
 
-	  if err := enc.Encode(response); err != nil {
-         fmt.Println(err.Error())
-     }
+	if err := enc.Encode(response); err != nil {
+		fmt.Println(err.Error())
+	}
 }
