@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -69,11 +68,11 @@ func getHome(w http.ResponseWriter, r *http.Request) {
 		fmt.Print("\nCould not get mongo db cursor: ", err)
 		return
 	}
-var animals struct {
-    Items []Animal
-} = struct {
-    Items []Animal
-}{}
+	var animals struct {
+		Items []Animal
+	} = struct {
+		Items []Animal
+	}{}
 	for cursor.Next(ctx) {
 		var animal Animal
 
@@ -82,7 +81,7 @@ var animals struct {
 			fmt.Print("\nCould not decode animal: ", err)
 			return
 		}
-		animals.Items = append(animals.Items, animal )
+		animals.Items = append(animals.Items, animal)
 	}
 
 	fmt.Printf("Data: ", data)
@@ -167,41 +166,40 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 	case "POST":
 		fmt.Println("POST")
 		response, err = createRecord(client.Collection, ctx, bsonData)
-		var data,ok = response["data"].(map[string]interface{})
-		if ok==false{
+		var data, ok = response["data"].(map[string]interface{})
+		if ok == false {
 			fmt.Println("Could not convert response: ", id)
 			return
 
 		}
-		objId, ok:=data["inserted"].(primitive.ObjectID)
-		if ok==false{
+		objId, ok := data["inserted"].(primitive.ObjectID)
+		if ok == false {
 			fmt.Println("Could not convert data: ", id)
 			return
 
 		}
 		fmt.Println("objId: ", objId)
-		filter:= bson.M{"_id": objId}
+		filter := bson.M{"_id": objId}
 		var animal Animal
-		 err:= client.Collection.FindOne(ctx, filter).Decode(&animal)
-		if err!=nil{
+		err := client.Collection.FindOne(ctx, filter).Decode(&animal)
+		if err != nil {
 			fmt.Println("Could not get new animal: ")
 			return
 
 		}
-	tmpl, err := template.ParseFiles("templates/row.html")
 
-	if err != nil {
-		panic(err)
-	}
+		fmt.Println("Animal: ", animal)
+		tmpl, err := template.ParseFiles("templates/row.html")
 
-	err = tmpl.Execute(w, animal)
-	if err != nil {
-		panic(err)
-	}
+		if err != nil {
+			panic(err)
+		}
 
+		err = tmpl.Execute(w, animal)
+		if err != nil {
+			panic(err)
+		}
 
-
-		
 	case "PUT":
 		fmt.Println("PUT")
 		response, err = updateRecord(client.Collection, ctx, data)
@@ -219,11 +217,4 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		response = map[string]interface{}{"error": err.Error()}
 	}
 
-	enc := json.NewEncoder(w)
-
-	enc.SetIndent("", "  ")
-
-	if err := enc.Encode(response); err != nil {
-		fmt.Println(err.Error())
-	}
 }
