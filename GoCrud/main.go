@@ -41,9 +41,7 @@ func getUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Print out all the form fields and their values.
 	for key, values := range r.Form {
-		// `values` is a slice of strings (because form fields can have multiple values)
 		fmt.Printf("%s: %s\n", key, values[0])
 	}
 }
@@ -82,7 +80,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://"+dbUser+":"+dbPass+"@172.28.224.1:27017"))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://"+dbUser+":"+dbPass+"@172.28.224.1:27017/gocrud?authSource=gocrud"))
 
 	if err != nil {
 		fmt.Println("Error in mongodb client")
