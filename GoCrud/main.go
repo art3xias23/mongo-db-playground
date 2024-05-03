@@ -13,11 +13,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const (
-	dbUser = "tino"
-	dbPass = "password"
-	dbName = "gocrud"
-)
+var config DbConfig
+var client MongoDbClient
 
 func main() {
 	fmt.Println("hello")
@@ -41,19 +38,6 @@ func main() {
 	http.ListenAndServe(":3000", nil)
 }
 
-var config DbConfig
-
-type DbConfig struct {
-	DbPass string `yaml:"dbPass"`
-	DbUser string `yaml:"dbUser"`
-}
-
-type Animal struct {
-	Id   int
-	Type string
-	Name string
-}
-
 func getUpdate(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Got update")
 	if err := r.ParseForm(); err != nil {
@@ -69,15 +53,38 @@ func getUpdate(w http.ResponseWriter, r *http.Request) {
 func getHome(w http.ResponseWriter, r *http.Request) {
 	var tmplFile = "templates/layout.html"
 	var rowFile = "templates/row.html"
-	items := []Animal{
-		{Type: "Dog", Name: "Rob"},
-		{Type: "Cat", Name: "Mandy"},
+	var data []Animal
+
+	ctx := context.Background()
+	client, err := GetMongoDbClient(config.DbPass, config.DbUser, ctx)
+	if err != nil {
+		fmt.Print("\nCould not get mongo db client: ", err)
+		return
 	}
 
-	data := struct {
-		Items []Animal
-	}{
-		Items: items}
+	filter := bson.M{}
+	cursor, err := client.Collection.Find(ctx, filter)
+	if err != nil {
+		fmt.Print("\nCould not get mongo db cursor: ", err)
+		return
+	}
+var animals struct {
+    Items []Animal
+} = struct {
+    Items []Animal
+}{}
+	for cursor.Next(ctx) {
+		var animal Animal
+
+		err = cursor.Decode(&animal)
+		if err != nil {
+			fmt.Print("\nCould not decode animal: ", err)
+			return
+		}
+		animals.Items = append(animals.Items, animal )
+	}
+
+	fmt.Printf("Data: ", data)
 
 	tmpl, err := template.ParseFiles(tmplFile, rowFile)
 
@@ -85,7 +92,7 @@ func getHome(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	err = tmpl.Execute(w, data)
+	err = tmpl.Execute(w, animals)
 	if err != nil {
 		panic(err)
 	}
@@ -97,16 +104,17 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	ctx:=context.Background()
 	response := map[string]interface{}{}
 
 	filter := bson.M{}
+	ctx := context.Background()
 	client, err := GetMongoDbClient(config.DbPass, config.DbUser, ctx)
 	if err != nil {
 		fmt.Print("\nCould not get mongo db client: ", err)
 		return
 	}
-	cursor, err := client.collection.Find(ctx, filter)
+	cursor, err := client.Collection.Find(ctx, filter)
+
 	if err != nil {
 		fmt.Print("\nCould not get cursor: ", err)
 		return
@@ -157,16 +165,16 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
 		fmt.Println("POST")
-		response, err = createRecord(client.collection, ctx, bsonData)
+		response, err = createRecord(client.Collection, ctx, bsonData)
 	case "PUT":
 		fmt.Println("PUT")
-		response, err = updateRecord(client.collection, ctx, data)
+		response, err = updateRecord(client.Collection, ctx, data)
 	case "GET":
 		fmt.Println("GET")
-		response, err = getRecords(client.collection, ctx)
+		response, err = getRecords(client.Collection, ctx)
 	case "DELETE":
 		fmt.Println("DELETE")
-		response, err = deleteRecord(client.collection, ctx, data)
+		response, err = deleteRecord(client.Collection, ctx, data)
 	}
 
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 type MongoDbClient struct {
 	Client     *mongo.Client
 	Database   *mongo.Database
-	collection *mongo.Collection
+	Collection *mongo.Collection
 }
 
 func GetMongoDbClient(dbPass string, dbUser string, ctx context.Context) (*MongoDbClient, error) {
@@ -26,12 +26,12 @@ func GetMongoDbClient(dbPass string, dbUser string, ctx context.Context) (*Mongo
 
 	fmt.Println("connection established")
 
-	database := client.Database(dbName)
+	database := client.Database("gocrud")
 	collection := database.Collection("animals")
 
 	return &MongoDbClient{
 		Client:     client,
 		Database:   database,
-		collection: collection,
+		Collection: collection,
 	}, nil
 }
