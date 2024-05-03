@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"gopkg.in/yaml.v2"
 )
 
@@ -166,6 +167,41 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 	case "POST":
 		fmt.Println("POST")
 		response, err = createRecord(client.Collection, ctx, bsonData)
+		var data,ok = response["data"].(map[string]interface{})
+		if ok==false{
+			fmt.Println("Could not convert response: ", id)
+			return
+
+		}
+		objId, ok:=data["inserted"].(primitive.ObjectID)
+		if ok==false{
+			fmt.Println("Could not convert data: ", id)
+			return
+
+		}
+		fmt.Println("objId: ", objId)
+		filter:= bson.M{"_id": objId}
+		var animal Animal
+		 err:= client.Collection.FindOne(ctx, filter).Decode(&animal)
+		if err!=nil{
+			fmt.Println("Could not get new animal: ")
+			return
+
+		}
+	tmpl, err := template.ParseFiles("templates/row.html")
+
+	if err != nil {
+		panic(err)
+	}
+
+	err = tmpl.Execute(w, animal)
+	if err != nil {
+		panic(err)
+	}
+
+
+
+		
 	case "PUT":
 		fmt.Println("PUT")
 		response, err = updateRecord(client.Collection, ctx, data)
