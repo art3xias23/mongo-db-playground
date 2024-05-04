@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -38,22 +39,9 @@ func main() {
 	http.ListenAndServe(":3000", nil)
 }
 
-func getUpdate(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Got update")
-	if err := r.ParseForm(); err != nil {
-		fmt.Fprintf(w, "ParseForm() err: %v", err)
-		return
-	}
-
-	for key, values := range r.Form {
-		fmt.Printf("%s: %s\n", key, values[0])
-	}
-}
-
 func getHome(w http.ResponseWriter, r *http.Request) {
 	var tmplFile = "templates/layout.html"
 	var rowFile = "templates/row.html"
-	var data []Animal
 
 	ctx := context.Background()
 	client, err := GetMongoDbClient(config.DbPass, config.DbUser, ctx)
@@ -68,9 +56,7 @@ func getHome(w http.ResponseWriter, r *http.Request) {
 		fmt.Print("\nCould not get mongo db cursor: ", err)
 		return
 	}
-	var animals struct {
-		Items []Animal
-	} = struct {
+	var animals  = struct {
 		Items []Animal
 	}{}
 	for cursor.Next(ctx) {
@@ -84,7 +70,13 @@ func getHome(w http.ResponseWriter, r *http.Request) {
 		animals.Items = append(animals.Items, animal)
 	}
 
-	fmt.Printf("Data: ", data)
+	js, err:= json.MarshalIndent(animals, "", "     ")
+	if err!= nil{
+		fmt.Print("\nCould not marshal to json. ", err)
+		return
+
+	}
+	fmt.Printf("Data: ", string(js))
 
 	tmpl, err := template.ParseFiles(tmplFile, rowFile)
 
@@ -106,13 +98,13 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 
 	response := map[string]interface{}{}
 
-	filter := bson.M{}
 	ctx := context.Background()
 	client, err := GetMongoDbClient(config.DbPass, config.DbUser, ctx)
 	if err != nil {
 		fmt.Print("\nCould not get mongo db client: ", err)
 		return
 	}
+	filter := bson.M{}
 	cursor, err := client.Collection.Find(ctx, filter)
 
 	if err != nil {
@@ -209,6 +201,8 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 	case "DELETE":
 		fmt.Println("DELETE")
 		response, err = deleteRecord(client.Collection, ctx, data)
+		w.Write([]byte(""))
+		
 	}
 
 	if err != nil {

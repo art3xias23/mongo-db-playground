@@ -3,5 +3,5 @@
 	<td><input name="type" value={{.Type}}></input></td>
 	<td><input name="name" value={{.Name}}></input></td>
 	<td><button hx-post="/update" hx-include="closest tr">Update</button></td>
-	<td><button>Delete</button></td>
+	<td><button hx-delete="/endpoint" hx-include="closest tr" hx-confirm="Are you sure?" hx-swap="outerHTML swap:1s">Delete</button></td>
 </tr>
