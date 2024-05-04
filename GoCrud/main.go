@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -31,8 +30,6 @@ func main() {
 		fmt.Println("Could not unmarshal dbinfo.yaml", err)
 	}
 
-	fmt.Printf("password %s, username %s", config.DbPass, config.DbUser)
-
 	http.HandleFunc("/endpoint", requestHandler)
 	http.HandleFunc("/", getHome)
 
@@ -56,7 +53,7 @@ func getHome(w http.ResponseWriter, r *http.Request) {
 		fmt.Print("\nCould not get mongo db cursor: ", err)
 		return
 	}
-	var animals  = struct {
+	var animals = struct {
 		Items []Animal
 	}{}
 	for cursor.Next(ctx) {
@@ -69,14 +66,6 @@ func getHome(w http.ResponseWriter, r *http.Request) {
 		}
 		animals.Items = append(animals.Items, animal)
 	}
-
-	js, err:= json.MarshalIndent(animals, "", "     ")
-	if err!= nil{
-		fmt.Print("\nCould not marshal to json. ", err)
-		return
-
-	}
-	fmt.Printf("Data: ", string(js))
 
 	tmpl, err := template.ParseFiles(tmplFile, rowFile)
 
@@ -96,53 +85,28 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	response := map[string]interface{}{}
-
 	ctx := context.Background()
-	client, err := GetMongoDbClient(config.DbPass, config.DbUser, ctx)
-	if err != nil {
-		fmt.Print("\nCould not get mongo db client: ", err)
-		return
-	}
-	filter := bson.M{}
-	cursor, err := client.Collection.Find(ctx, filter)
 
-	if err != nil {
-		fmt.Print("\nCould not get cursor: ", err)
-		return
-	}
-
-	defer cursor.Close(ctx)
-
-	for cursor.Next(ctx) {
-		var animal Animal
-
-		if err := cursor.Decode(&animal); err != nil {
-			fmt.Print("\nCould not decode animal: ", err)
-			return
-		}
-		fmt.Printf("Animal: %+v\n", animal)
-	}
-
-	data := map[string]interface{}{}
-
-	err = r.ParseForm()
+	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
 	}
 
+
 	id := r.FormValue("Id")
 	tpe := r.FormValue("Type")
 	name := r.FormValue("Name")
 
+	fmt.Printf("id: %s, type: %s, name: %s\n", id, tpe, name)
+
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		fmt.Println("Could not convert id to int: ", id)
+		fmt.Println("Could not convert id to int: ")
 		return
 	}
 
-	animal := Animal{
+	var animal = Animal{
 		Id:   idInt,
 		Type: tpe,
 		Name: name,
@@ -153,7 +117,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Could not marshal animal: ", id)
 		return
 	}
-
+	response:= map[string]interface{}{}
 	switch r.Method {
 	case "POST":
 		fmt.Println("POST")
@@ -180,7 +144,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 
 		}
 
-		fmt.Println("Animal: ", animal)
+		fmt.Printf("Animal, %v ", animal)
 		tmpl, err := template.ParseFiles("templates/row.html")
 
 		if err != nil {
@@ -193,16 +157,30 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case "PUT":
+		var data map[string]interface{}
+		err = bson.Unmarshal(bsonData, &data)
+		if err != nil {
+			fmt.Println("Could not unmarshal BSON data: ", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 		fmt.Println("PUT")
 		response, err = updateRecord(client.Collection, ctx, data)
 	case "GET":
 		fmt.Println("GET")
 		response, err = getRecords(client.Collection, ctx)
 	case "DELETE":
+		var data map[string]interface{}
+		err = bson.Unmarshal(bsonData, &data)
+		if err != nil {
+			fmt.Println("Could not unmarshal BSON data: ", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 		fmt.Println("DELETE")
 		response, err = deleteRecord(client.Collection, ctx, data)
 		w.Write([]byte(""))
-		
+
 	}
 
 	if err != nil {
