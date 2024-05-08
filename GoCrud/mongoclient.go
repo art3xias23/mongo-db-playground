@@ -27,6 +27,7 @@ func GetMongoDbClient(dbPass string, dbUser string, ctx context.Context) (*Mongo
 	fmt.Println("connection established")
 
 	database := client.Database("gocrud")
+
 	collection := database.Collection("animals")
 
 	return &MongoDbClient{

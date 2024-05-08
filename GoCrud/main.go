@@ -16,7 +16,6 @@ import (
 )
 
 var config DbConfig
-var client MongoDbClient
 
 func main() {
 	fmt.Println("hello")
@@ -88,57 +87,48 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	ctx := context.Background()
+	client, err := GetMongoDbClient(config.DbPass, config.DbUser, ctx)
+		if err != nil {
+			fmt.Println("Could not Get second client")
+			return
 
-	err := r.ParseForm()
-	if err != nil {
-		http.Error(w, "Error parsing form", http.StatusBadRequest)
-		return
-	}
-	fmt.Println("start Body print")
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Error reading body", http.StatusBadRequest)
-		return
-	}
-	bodystr:=string(body)
-	fmt.Println(bodystr)
-	fmt.Println("end Body print")
-
-	params, err := url.ParseQuery(bodystr)
-	if err != nil {
-		http.Error(w, "Error parsing query", http.StatusBadRequest)
-		return
-	}
-
-	// Extract values
-	id := params.Get("Id")
-	tpe := params.Get("Type")
-	name := params.Get("Name")
-
-
-	fmt.Printf("id: %s, type: %s, name: %s\n", id, tpe, name)
-
-	idInt, err := strconv.Atoi(id)
-	if err != nil {
-		fmt.Println("Could not convert id to int: ")
-		return
-	}
-
-	var animal = Animal{
-		Id:   idInt,
-		Type: tpe,
-		Name: name,
-	}
-
-	bsonData, err := bson.Marshal(animal)
-	if err != nil {
-		fmt.Println("Could not marshal animal: ", id)
-		return
-	}
+		}
 	response := map[string]interface{}{}
+
 	switch r.Method {
 	case "POST":
 		fmt.Println("POST")
+		err := r.ParseForm()
+		if err != nil {
+			http.Error(w, "Error parsing form", http.StatusBadRequest)
+			return
+		}
+
+		idStr := r.FormValue("Id")
+		tpe := r.FormValue("Type")
+		name := r.FormValue("Name")
+
+		id, err := strconv.Atoi(idStr)
+
+		fmt.Printf("id: %d, type: %s, name: %s\n", id, tpe, name)
+		if err != nil {
+			fmt.Println("Could not convert id to int inside post: ")
+			return
+
+		}
+
+		animal := Animal{
+			Id:   id,
+			Type: tpe,
+			Name: name,
+		}
+		bsonData, err := bson.Marshal(animal)
+		if err != nil {
+			fmt.Println("Could not Marshal json")
+			return
+
+		}
+
 		response, err = createRecord(client.Collection, ctx, bsonData)
 		var data, ok = response["data"].(map[string]interface{})
 		if ok == false {
@@ -154,8 +144,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Println("objId: ", objId)
 		filter := bson.M{"_id": objId}
-		var animal Animal
-		err := client.Collection.FindOne(ctx, filter).Decode(&animal)
+		err = client.Collection.FindOne(ctx, filter).Decode(&animal)
 		if err != nil {
 			fmt.Println("Could not get new animal: ")
 			return
@@ -175,19 +164,61 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case "PUT":
-		var data map[string]interface{}
-		err = bson.Unmarshal(bsonData, &data)
+		// var data map[string]interface{}
+		// err = bson.Unmarshal(bsonData, &data)
+		// if err != nil {
+		// 	fmt.Println("Could not unmarshal BSON data: ", err)
+		// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
+		// 	return
+		// }
+		// fmt.Println("PUT")
+		// response, err = updateRecord(client.Collection, ctx, data)
+	case "GET":
+		// fmt.Println("GET")
+		// response, err = getRecords(client.Collection, ctx)
+	case "DELETE":
+
+		fmt.Println("start Body print")
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
-			fmt.Println("Could not unmarshal BSON data: ", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			http.Error(w, "Error reading body", http.StatusBadRequest)
 			return
 		}
-		fmt.Println("PUT")
-		response, err = updateRecord(client.Collection, ctx, data)
-	case "GET":
-		fmt.Println("GET")
-		response, err = getRecords(client.Collection, ctx)
-	case "DELETE":
+		bodystr := string(body)
+		fmt.Println(bodystr)
+		fmt.Println("end Body print")
+
+		params, err := url.ParseQuery(bodystr)
+		if err != nil {
+			http.Error(w, "Error parsing query", http.StatusBadRequest)
+			return
+		}
+
+		// Extract values
+		id := params.Get("Id")
+		tpe := params.Get("Type")
+		name := params.Get("Name")
+
+		fmt.Printf("id: %s, type: %s, name: %s\n", id, tpe, name)
+
+		idInt, err := strconv.Atoi(id)
+		if err != nil {
+			fmt.Println("Could not convert id to int: ")
+			return
+		}
+
+		var animal = Animal{
+			Id:   idInt,
+			Type: tpe,
+			Name: name,
+		}
+
+		bsonData, err := bson.Marshal(animal)
+		if err != nil {
+			fmt.Println("Could not marshal animal: ", id)
+			return
+		}
+
 		var data map[string]interface{}
 		err = bson.Unmarshal(bsonData, &data)
 		if err != nil {
@@ -199,12 +230,6 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		response, err = deleteRecord(client.Collection, ctx, data)
 		w.Write([]byte(""))
 
-	}
-
-	if err != nil {
-
-		fmt.Println("Error in obtaining response")
-		response = map[string]interface{}{"error": err.Error()}
 	}
 
 }

@@ -14,8 +14,6 @@ func getRecords(collection *mongo.Collection, ctx context.Context) (map[string]i
 		return nil, err
 	}
 
-	defer cur.Close(ctx)
-
 	var products []bson.M
 
 	for cur.Next(ctx){
