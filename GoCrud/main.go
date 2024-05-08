@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 
@@ -92,11 +94,27 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
 	}
+	fmt.Println("start Body print")
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Error reading body", http.StatusBadRequest)
+		return
+	}
+	bodystr:=string(body)
+	fmt.Println(bodystr)
+	fmt.Println("end Body print")
 
+	params, err := url.ParseQuery(bodystr)
+	if err != nil {
+		http.Error(w, "Error parsing query", http.StatusBadRequest)
+		return
+	}
 
-	id := r.FormValue("Id")
-	tpe := r.FormValue("Type")
-	name := r.FormValue("Name")
+	// Extract values
+	id := params.Get("Id")
+	tpe := params.Get("Type")
+	name := params.Get("Name")
+
 
 	fmt.Printf("id: %s, type: %s, name: %s\n", id, tpe, name)
 
@@ -117,7 +135,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Could not marshal animal: ", id)
 		return
 	}
-	response:= map[string]interface{}{}
+	response := map[string]interface{}{}
 	switch r.Method {
 	case "POST":
 		fmt.Println("POST")
