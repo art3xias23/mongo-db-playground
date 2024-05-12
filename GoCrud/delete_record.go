@@ -9,7 +9,8 @@ import (
 )
 
 func deleteRecord(collection *mongo.Collection, ctx context.Context, data map[string]interface{}) (map[string]interface{}, error) {
-	fmt.Println("start Printing dict")
+	fmt.Print()
+	fmt.Println("Enter deleteRecord")
 	PrintDict(data)
 	fmt.Println("\nend Printing dict")
 	fmt.Printf("Id is %v", data["id"])

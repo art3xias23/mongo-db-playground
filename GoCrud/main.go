@@ -18,8 +18,10 @@ import (
 var config DbConfig
 
 func main() {
-	fmt.Println("hello")
 
+	//File server
+
+	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("./css"))) )
 	configContent, err := os.ReadFile("dbinfo.yaml")
 
 	if err != nil {
@@ -34,6 +36,7 @@ func main() {
 	http.HandleFunc("/endpoint", requestHandler)
 	http.HandleFunc("/", getHome)
 
+	fmt.Println("Listening on port 3000")
 	http.ListenAndServe(":3000", nil)
 }
 
@@ -185,8 +188,6 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		bodystr := string(body)
-		fmt.Println(bodystr)
-		fmt.Println("end Body print")
 
 		params, err := url.ParseQuery(bodystr)
 		if err != nil {
