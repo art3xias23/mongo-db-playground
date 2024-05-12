@@ -167,15 +167,48 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case "PUT":
-		// var data map[string]interface{}
-		// err = bson.Unmarshal(bsonData, &data)
-		// if err != nil {
-		// 	fmt.Println("Could not unmarshal BSON data: ", err)
-		// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
-		// 	return
-		// }
-		// fmt.Println("PUT")
-		// response, err = updateRecord(client.Collection, ctx, data)
+		r.ParseForm()
+		idStr:=r.FormValue("Id")
+		tpe :=r.FormValue("Type")
+		name :=r.FormValue("Name")
+
+		id, err:=strconv.Atoi(idStr)
+		if err != nil {
+			fmt.Printf("Could not convert string (%s) to int\n", idStr )
+			return
+
+		}
+
+		var animal = Animal{
+			Id: id,
+			Type: tpe,
+			Name: name,
+		}
+
+		bsonData, err:= bson.Marshal(animal)
+		if err != nil {
+			fmt.Println("Could not marshal animal data", idStr )
+			return
+
+		}
+
+		var data map[string]interface{}
+		err = bson.Unmarshal(bsonData, &data)
+		if err != nil {
+			fmt.Println("Could not unmarshal BSON data: ", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		fmt.Println("PUT")
+		response, err = updateRecord(client.Collection, ctx, data)
+
+		
+		fmt.Println(response)
+		if err!= nil{
+			fmt.Println(err)
+		}
+
+
 	case "GET":
 		// fmt.Println("GET")
 		// response, err = getRecords(client.Collection, ctx)

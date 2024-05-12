@@ -25,9 +25,9 @@
 			</tr>
 		</thead>
 		<tbody hx-include="closest tr" hx-confirm="Are you sure?" hx-swap="outerHTML swap:1s">
-		{{range .Items}}
-		{{template "row.html" .}}
-		{{end}}
+			{{range .Items}}
+				{{template "row.html" .}}
+			{{end}}
 		</tbody>
 	</table>
 	<form>
