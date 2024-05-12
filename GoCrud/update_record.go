@@ -10,7 +10,7 @@ import (
 func updateRecord(collection *mongo.Collection, ctx context.Context, data map[string]interface{})(map[string]interface{}, error){
 	PrintDict(data)
 	fmt.Printf("Filter id: %s\n", data["id"])
-	filter:= bson.M{"id": data["Id"]}
+	filter:= bson.M{"id": data["id"]}
 	fields:= bson.M{"$set": data}
 
 	_, err:= collection.UpdateOne(ctx , filter,  fields)

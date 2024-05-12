@@ -12,6 +12,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/yaml.v2"
 )
 
@@ -21,7 +22,7 @@ func main() {
 
 	//File server
 
-	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("./css"))) )
+	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("./css"))))
 	configContent, err := os.ReadFile("dbinfo.yaml")
 
 	if err != nil {
@@ -91,11 +92,11 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 	client, err := GetMongoDbClient(config.DbPass, config.DbUser, ctx)
-		if err != nil {
-			fmt.Println("Could not Get second client")
-			return
+	if err != nil {
+		fmt.Println("Could not Get second client")
+		return
 
-		}
+	}
 	response := map[string]interface{}{}
 
 	switch r.Method {
@@ -167,27 +168,28 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case "PUT":
+		var rowFile = "templates/row.html"
 		r.ParseForm()
-		idStr:=r.FormValue("Id")
-		tpe :=r.FormValue("Type")
-		name :=r.FormValue("Name")
+		idStr := r.FormValue("Id")
+		tpe := r.FormValue("Type")
+		name := r.FormValue("Name")
 
-		id, err:=strconv.Atoi(idStr)
+		id, err := strconv.Atoi(idStr)
 		if err != nil {
-			fmt.Printf("Could not convert string (%s) to int\n", idStr )
+			fmt.Printf("Could not convert string (%s) to int\n", idStr)
 			return
 
 		}
 
 		var animal = Animal{
-			Id: id,
+			Id:   id,
 			Type: tpe,
 			Name: name,
 		}
 
-		bsonData, err:= bson.Marshal(animal)
+		bsonData, err := bson.Marshal(animal)
 		if err != nil {
-			fmt.Println("Could not marshal animal data", idStr )
+			fmt.Println("Could not marshal animal data", idStr)
 			return
 
 		}
@@ -202,12 +204,30 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("PUT")
 		response, err = updateRecord(client.Collection, ctx, data)
 
-		
 		fmt.Println(response)
-		if err!= nil{
+		if err != nil {
 			fmt.Println(err)
-		}
+		} else {
+			filter := bson.M{"id": id}
+			animal := Animal{}
+			err := client.Collection.FindOne(ctx, filter).Decode(&animal)
+			if err != nil {
+				if err == mongo.ErrNoDocuments {
+					fmt.Println("No documents found")
+					return
+				} else {
+					fmt.Print(err)
+					return
+				}
+			}
+			tmpl, err := template.ParseFiles(rowFile)
+			if err != nil {
+				fmt.Println("Count not parse the row template")
+			}
 
+			tmpl.Execute(w, animal)
+
+		}
 
 	case "GET":
 		// fmt.Println("GET")
